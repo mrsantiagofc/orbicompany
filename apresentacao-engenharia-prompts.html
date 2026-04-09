@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guia de Engenharia de Prompts — Orbi Company</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;300;400;600;700;900&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --void: #000000;
+  --obsidian: #0A0A0A;
+  --graphite: #1A1A1A;
+  --smoke: #2B2B2B;
+  --steel: #888888;
+  --silver: #AAAAAA;
+  --mist: #CCCCCC;
+  --white: #FFFFFF;
+  --pos: #3dbd6e;
+  --neg: #d95050;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--void);
+  font-family: 'Outfit', sans-serif;
+  color: var(--white);
+  overflow: hidden;
+  user-select: none;
+  cursor: none;
+}
+
+/* WAVE BG */
+#wave-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+#wave-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 2.5s ease; }
+#wave-bg img.visible { opacity: 1; }
+
+/* NEURAL */
+#neural { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .6; }
+
+/* SPOTLIGHT */
+#spotlight { position: fixed; inset: 0; z-index: 2; pointer-events: none; background: radial-gradient(circle 380px at 50% 50%, rgba(255,255,255,.04) 0%, transparent 70%); transition: background .06s; }
+
+/* GRAIN */
+#grain {
+  position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: .055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  animation: grainShift .28s steps(1) infinite;
+}
+@keyframes grainShift {
+  0%   { background-position: 0 0; }
+  25%  { background-position: 80px 45px; }
+  50%  { background-position: -35px 95px; }
+  75%  { background-position: 120px -65px; }
+}
+
+/* PULSE */
+#pulse { position: fixed; inset: 0; z-index: 98; pointer-events: none; background: transparent; }
+#pulse.fire { animation: pulseAnim .5s ease-out forwards; }
+@keyframes pulseAnim {
+  0%   { background: radial-gradient(circle 0px at 50% 50%, rgba(255,255,255,.18) 0%, transparent 100%); }
+  40%  { background: radial-gradient(circle 900px at 50% 50%, rgba(255,255,255,.06) 0%, transparent 100%); }
+  100% { background: transparent; }
+}
+
+/* CURSOR */
+#cursor { position: fixed; width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.5); pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); transition: transform .08s ease; }
+#cursor-ring { position: fixed; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,.15); pointer-events: none; z-index: 9998; transform: translate(-50%,-50%); transition: transform .25s ease, width .2s, height .2s, opacity .2s; }
+
+/* PROGRESS */
+#progress { position: fixed; bottom: 0; left: 0; height: 2px; background: rgba(255,255,255,.45); transition: width .35s ease; z-index: 999; box-shadow: 0 0 6px rgba(255,255,255,.2); }
+
+/* NAV DOTS */
+#nav-dots { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; z-index: 999; align-items: center; }
+.nav-dot { width: 4px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); cursor: pointer; transition: background .25s, width .25s; flex-shrink: 0; }
+.nav-dot.dot-active { width: 18px; background: rgba(255,255,255,.65); }
+.nav-dot:hover:not(.dot-active) { background: rgba(255,255,255,.35); }
+
+/* NAV BUTTONS */
+.nbtn { position: fixed; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: none; color: rgba(255,255,255,.3); font-size: 22px; padding: 24px; z-index: 999; transition: color .2s; }
+.nbtn:hover { color: rgba(255,255,255,.7); }
+#np { left: 0; } #nn { right: 0; }
+
+/* DECK */
+.deck { width: 100vw; height: 100vh; position: relative; z-index: 4; }
+.slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 64px 80px 64px 72px; opacity: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+.slide.active { opacity: 1; pointer-events: all; }
+.slide.center { align-items: center; text-align: center; }
+
+/* SLIDE TRANSITIONS */
+@keyframes slideInRight { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideInLeft  { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0); } }
+.slide.anim-right { animation: slideInRight .38s cubic-bezier(.2,.8,.2,1) forwards; }
+.slide.anim-left  { animation: slideInLeft  .38s cubic-bezier(.2,.8,.2,1) forwards; }
+
+/* SECTION TAG */
+.section-tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; color: var(--steel); margin-bottom: 18px; }
+
+/* RULE */
+.rule { width: 36px; height: 2px; background: var(--white); margin-bottom: 24px; }
+@keyframes ruleGrow { from { width: 0; opacity: 0; } to { width: 36px; opacity: 1; } }
+.slide.active span.rule.an { animation: ruleGrow .5s .04s cubic-bezier(.2,.8,.2,1) both !important; }
+
+/* TYPOGRAPHY */
+.t-cover { font-size: clamp(52px, 7vw, 96px); font-weight: 700; line-height: .97; letter-spacing: -.025em; }
+.t-title  { font-size: clamp(32px, 4vw, 60px); font-weight: 700; line-height: 1.02; letter-spacing: -.02em; max-width: 900px; }
+.t-body   { font-size: clamp(15px, 1.6vw, 19px); font-weight: 300; color: var(--mist); line-height: 1.65; }
+.t-label  { font-size: 11px; font-weight: 700; letter-spacing: .25em; color: var(--silver); text-transform: uppercase; margin-bottom: 10px; }
+
+/* GLITCH */
+@keyframes glitch {
+  0%, 90%, 100% { clip-path: none; transform: none; }
+  91% { clip-path: inset(28% 0 55% 0); transform: translate(-3px, 0); }
+  92% { clip-path: inset(60% 0 18% 0); transform: translate(3px, 0); }
+  93% { clip-path: inset(8% 0 72% 0); transform: translate(-2px, 0); }
+  94% { clip-path: none; transform: none; }
+}
+.t-glitch { animation: glitch 6s infinite 1.5s; }
+
+/* GHOST NUMBER */
+.ghost-num { position: absolute; font-size: clamp(220px, 32vw, 420px); font-weight: 900; color: rgba(255,255,255,.022); letter-spacing: -.06em; pointer-events: none; z-index: 0; line-height: 1; top: 50%; left: 50%; transform: translate(-50%,-50%); white-space: nowrap; }
+
+/* SECTION ICON + ORBIT */
+.section-icon-wrap { position: relative; width: 72px; height: 72px; display: flex; align-items: center; justify-content: center; margin-bottom: 28px; }
+.section-icon-glyph { color: rgba(255,255,255,.4); position: relative; z-index: 1; }
+.orbit-ring { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255,255,255,.07); border-top: 1px solid rgba(255,255,255,.38); border-right: 1px solid rgba(255,255,255,.15); animation: orbit 6s linear infinite; }
+@keyframes orbit { to { transform: rotate(360deg); } }
+
+/* CARDS */
+.grid { display: grid; gap: 1px; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: 1fr 1fr 1fr; }
+.g4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.card { background: rgba(22,22,22,.9); padding: 24px 28px; border: 1px solid var(--smoke); transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+.card:hover { transform: scale(1.012); border-color: rgba(255,255,255,.1); }
+.card[onclick] { cursor: pointer; }
+.card.card-active { background: rgba(34,34,34,.98); border-color: rgba(255,255,255,.28); transform: scale(1.012); }
+.card.card-active .card-icon { color: rgba(255,255,255,.55); }
+.card-icon { color: rgba(255,255,255,.28); margin-bottom: 14px; transition: color .2s; }
+.card-icon svg { display: block; }
+.card-body { font-size: 15px; font-weight: 300; color: var(--mist); line-height: 1.6; }
+.card.hi { background: rgba(16,16,16,.95); border-color: #3a3a3a; }
+
+/* STAT */
+.stat { padding: 28px 32px; background: rgba(22,22,22,.9); border: 1px solid var(--smoke); }
+.stat-label { font-size: 10px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--steel); margin-bottom: 10px; }
+.stat-value { font-size: clamp(32px, 4.5vw, 58px); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat-sub { font-size: 13px; font-weight: 300; color: var(--silver); margin-top: 8px; line-height: 1.5; }
+
+/* COMPARISON */
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; }
+.vs-bad { background: rgba(10,10,10,.9); padding: 28px 32px; border: 1px solid #1f1f1f; }
+.vs-good { background: rgba(14,14,14,.9); padding: 28px 32px; border: 1px solid #2a2a2a; }
+.vs-label { font-size: 10px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; margin-bottom: 14px; }
+.vs-bad .vs-label { color: #444; }
+.vs-good .vs-label { color: var(--silver); }
+
+/* FLOW */
+.flow { display: flex; align-items: flex-start; gap: 0; width: 100%; }
+.flow-step { flex: 1; padding: 20px 24px; background: rgba(20,20,20,.9); border: 1px solid var(--smoke); border-top: 2px solid transparent; cursor: pointer; transition: border-top-color .25s ease, background .25s ease; }
+.flow-step + .flow-step { border-left: none; }
+.flow-step.flow-active { border-top-color: var(--white); background: rgba(28,28,28,.95); }
+.flow-num { font-size: 26px; font-weight: 900; color: var(--steel); margin-bottom: 8px; transition: color .25s; }
+.flow-step.flow-active .flow-num { color: var(--white); }
+.flow-icon { color: rgba(255,255,255,.2); transition: color .25s; margin-bottom: 10px; }
+.flow-step.flow-active .flow-icon { color: rgba(255,255,255,.5); }
+.flow-icon svg { display: block; }
+.flow-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.flow-body { font-size: 13px; font-weight: 300; color: var(--silver); line-height: 1.6; }
+
+/* ARROW LIST */
+.arrow-list { list-style: none; }
+.arrow-list li { font-size: clamp(14px, 1.5vw, 17px); font-weight: 300; color: var(--mist); padding: 11px 0; border-bottom: 1px solid #141414; display: flex; gap: 16px; line-height: 1.5; }
+.arrow-list li::before { content: '→'; color: rgba(255,255,255,.4); flex-shrink: 0; margin-top: 1px; }
+.arrow-list li strong { color: var(--white); font-weight: 600; }
+
+/* CALLOUT */
+.callout { position: relative; border-left: none; padding: 18px 24px 18px 26px; margin-top: 24px; background: rgba(10,10,10,.8); }
+.callout::before { content: ''; position: absolute; left: 0; top: 0; width: 2px; height: 0; background: rgba(255,255,255,.3); transition: height .6s .48s cubic-bezier(.2,.8,.2,1); }
+.slide.active .callout::before { height: 100%; }
+.callout p { font-size: clamp(14px, 1.5vw, 17px); font-weight: 300; color: var(--silver); line-height: 1.6; }
+.callout p strong { color: var(--white); font-weight: 600; }
+
+/* DATA CALLOUT */
+.data-callout { border-left: 2px solid rgba(255,255,255,.5); padding: 18px 24px; margin-top: 12px; background: rgba(12,12,12,.9); }
+.data-callout p { font-size: 14px; font-weight: 300; color: var(--mist); line-height: 1.6; }
+.data-callout p strong { color: var(--white); font-weight: 600; }
+.data-source { font-size: 10px; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--steel); margin-top: 8px; display: block; }
+
+/* PROMPT BOX */
+.prompt-box { background: rgba(6,6,6,.95); border: 1px solid #252525; padding: 20px 24px; font-size: 14px; color: var(--mist); line-height: 1.75; margin-top: 14px; }
+.prompt-box .ph { color: var(--steel); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 10px; display: block; }
+.prompt-box strong { color: var(--white); }
+
+/* COL 2 */
+.col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; width: 100%; max-width: 1100px; }
+
+/* DIVIDER */
+.div-h { width: 36px; height: 1px; background: var(--smoke); margin: 22px 0; }
+
+/* SECTION COVER */
+.section-cover { background: transparent; }
+
+/* BARCHART */
+.barchart { width: 100%; max-width: 1100px; }
+.bc-row { display: flex; align-items: flex-start; gap: 20px; padding: 13px 0; border-bottom: 1px solid #0d0d0d; }
+.bc-row:last-child { border-bottom: none; }
+.bc-label { font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--steel); width: 148px; flex-shrink: 0; padding-top: 5px; }
+.bc-bars { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.bc-bar-wrap { display: flex; align-items: center; gap: 10px; }
+.bc-month { font-size: 9px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #3a3a3a; width: 26px; flex-shrink: 0; }
+.bc-track { flex: 1; height: 4px; background: rgba(255,255,255,.06); border-radius: 2px; overflow: hidden; }
+.bc-fill { height: 100%; width: 0; border-radius: 2px; }
+.bc-fill.fev { background: rgba(255,255,255,.32); }
+.bc-fill.mar { background: rgba(255,255,255,.72); }
+.bc-val { font-size: 11px; font-weight: 600; color: var(--steel); white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 90px; text-align: right; }
+.bc-val.hi { color: var(--mist); }
+.bc-delta { font-size: 10px; font-weight: 700; letter-spacing: .05em; margin-left: 8px; opacity: 0; transition: none; white-space: nowrap; }
+.bc-delta.pos { color: var(--pos); }
+.bc-delta.neg { color: var(--neg); }
+
+/* ANIMATE */
+@keyframes up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.slide.active .an { animation: up .4s ease forwards; opacity: 0; }
+.slide.active .d1 { animation-delay: .04s; }
+.slide.active .d2 { animation-delay: .11s; }
+.slide.active .d3 { animation-delay: .18s; }
+.slide.active .d4 { animation-delay: .25s; }
+.slide.active .d5 { animation-delay: .32s; }
+.slide.active .d6 { animation-delay: .39s; }
+.slide.active .d7 { animation-delay: .46s; }
+.slide.active .d8 { animation-delay: .53s; }
+
+/* SEAL */
+.seal { position: absolute; bottom: 36px; right: 52px; opacity: .2; }
+
+/* UTILITY */
+.hl { color: var(--white); }
+.w100 { width: 100%; max-width: 1100px; }
+.mw800 { max-width: 800px; }
+.mt { margin-top: 28px; }
+</style>
+</head>
+<body>
+
+<div id="wave-bg"></div>
+<canvas id="neural"></canvas>
+<div id="spotlight"></div>
+<div id="grain"></div>
+<div id="pulse"></div>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div id="progress"></div>
+<div id="nav-dots"></div>
+<button class="nbtn" id="np" onclick="go(-1)">&#8249;</button>
+<button class="nbtn" id="nn" onclick="go(1)">&#8250;</button>
+
+<div class="deck" id="deck">
+
+<!-- SLIDE 01 — CAPA -->
+<section class="slide center" id="s0">
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <img src="/Users/matheussantiago/.claude/skills/orbi-brand/assets/logo-silver.png"
+         alt="Orbi" width="64" class="an d1" style="opacity:0; margin-bottom:40px; filter:brightness(.7);" />
+    <p class="section-tag an d2" style="opacity:0">Orbi Company · Abril 2026</p>
+    <h1 class="t-cover t-glitch plx an d3" style="opacity:0; text-align:center; font-weight:700; max-width:860px; margin-top:8px;" data-depth="1">
+      Guia de Engenharia de Prompts
+    </h1>
+    <div style="width:36px;height:1px;background:var(--smoke);margin:28px auto;" class="an d4" style="opacity:0"></div>
+    <p style="font-size:clamp(15px,1.6vw,20px); font-weight:300; color:var(--silver); text-align:center;" class="an d5" style="opacity:0">
+      Do usuário básico ao especialista em prompts
+    </p>
+  </div>
+</section>
+
+<!-- SLIDE 02 — O QUE SAO LLMs -->
+<section class="slide" id="s1">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Fundamentos · Bloco 01</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">O Que São LLMs?</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <p class="t-body an d4" style="opacity:0; max-width:820px; margin-bottom:20px;">
+    LLMs (Large Language Models) são sistemas de IA treinados em bilhões de páginas web, livros e documentos. Eles conseguem:
+  </p>
+  <ul class="arrow-list" style="max-width:860px;">
+    <li class="an d5" style="opacity:0">Compreender contexto complexo em conversas naturais</li>
+    <li class="an d6" style="opacity:0">Gerar textos originais em qualquer estilo ou formato</li>
+    <li class="an d7" style="opacity:0">Traduzir conceitos entre diferentes áreas do conhecimento</li>
+    <li class="an d8" style="opacity:0">Resolver problemas através de raciocínio estruturado</li>
+  </ul>
+  <p class="t-body an d8" style="opacity:0; max-width:820px; margin-top:12px; border-top:1px solid #141414; padding-top:11px;">
+    Criar conteúdo otimizado para objetivos específicos
+  </p>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 03 — SECTION BREAK: FERRAMENTAS -->
+<section class="slide center section-cover" id="s2">
+  <div class="ghost-num">02</div>
+  <div class="section-icon-wrap an d1" style="opacity:0">
+    <svg class="section-icon-glyph" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+    </svg>
+    <div class="orbit-ring"></div>
+  </div>
+  <span class="rule an d2" style="opacity:0"></span>
+  <p class="section-tag an d3" style="opacity:0">Bloco 02</p>
+  <h2 class="t-cover plx an d4" style="opacity:0; font-weight:700; text-align:center; max-width:720px;" data-depth="1.2">
+    Escolha a Ferramenta Certa
+  </h2>
+</section>
+
+<!-- SLIDE 04 — +50.000 IAS ESPECIALIZADAS -->
+<section class="slide" id="s3">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Ferramentas · Bloco 02</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">Existem +50.000 IAs Especializadas</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <p class="t-body an d4" style="opacity:0; max-width:820px; margin-bottom:24px;">
+    A maioria das pessoas usa a ferramenta errada para o trabalho errado.
+  </p>
+  <div class="col2 an d5" style="opacity:0">
+    <div>
+      <p class="t-label">Para Conteúdo e SEO</p>
+      <ul class="arrow-list">
+        <li><strong>Claude AI</strong> — superior para textos longos e estruturados</li>
+        <li><strong>ChatGPT-4</strong> — excelente para brainstorming</li>
+        <li><strong>Perplexity</strong> — ideal para pesquisa e verificação</li>
+      </ul>
+    </div>
+    <div>
+      <p class="t-label">Para Outras Atividades</p>
+      <ul class="arrow-list">
+        <li><strong>Midjourney</strong> — imagens profissionais</li>
+        <li><strong>ElevenLabs</strong> — síntese de voz</li>
+        <li><strong>GitHub Copilot</strong> — programação</li>
+      </ul>
+    </div>
+  </div>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 05 — A METODOLOGIA CORRETA -->
+<section class="slide" id="s4">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Metodologia · Bloco 02</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">A Metodologia Correta</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <div class="flow an d5" style="opacity:0">
+    <div class="flow-step flow-active" onclick="selectFlow(this)">
+      <div class="flow-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="flow-num">01</div>
+      <p class="flow-title">Defina o Problema</p>
+      <p class="flow-body">Defina claramente qual problema você quer resolver.</p>
+    </div>
+    <div class="flow-step" onclick="selectFlow(this)">
+      <div class="flow-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <div class="flow-num">02</div>
+      <p class="flow-title">Identifique o Resultado</p>
+      <p class="flow-body">Identifique que tipo de resultado você precisa.</p>
+    </div>
+    <div class="flow-step" onclick="selectFlow(this)">
+      <div class="flow-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      </div>
+      <div class="flow-num">03</div>
+      <p class="flow-title">Escolha a IA</p>
+      <p class="flow-body">Escolha a IA mais adequada para a tarefa.</p>
+    </div>
+    <div class="flow-step" onclick="selectFlow(this)">
+      <div class="flow-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </div>
+      <div class="flow-num">04</div>
+      <p class="flow-title">Desenvolva o Prompt</p>
+      <p class="flow-body">Desenvolva o prompt otimizado para aquela ferramenta.</p>
+    </div>
+  </div>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 06 — SECTION BREAK: MODELOS DE PROMPTING -->
+<section class="slide center section-cover" id="s5">
+  <div class="ghost-num">03</div>
+  <div class="section-icon-wrap an d1" style="opacity:0">
+    <svg class="section-icon-glyph" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+    </svg>
+    <div class="orbit-ring"></div>
+  </div>
+  <span class="rule an d2" style="opacity:0"></span>
+  <p class="section-tag an d3" style="opacity:0">Bloco 03</p>
+  <h2 class="t-cover plx an d4" style="opacity:0; font-weight:700; text-align:center; max-width:720px;" data-depth="1.2">
+    Modelos de Prompting
+  </h2>
+</section>
+
+<!-- SLIDE 07 — MODELOS DE PROMPTING -->
+<section class="slide" id="s6">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Técnicas · Bloco 03</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">6 Abordagens Técnicas Essenciais</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <div class="grid g3" style="width:100%; max-width:1100px;">
+    <div class="card an d5" style="opacity:0" onclick="selectCard(this)">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <p class="t-label">Zero-Shot</p>
+      <p class="card-body">O modelo responde sem exemplos prévios.</p>
+    </div>
+    <div class="card an d5" style="opacity:0" onclick="selectCard(this)">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <p class="t-label">Few-Shot</p>
+      <p class="card-body">Fornece exemplos antes da pergunta.</p>
+    </div>
+    <div class="card an d6" style="opacity:0" onclick="selectCard(this)">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <p class="t-label">Chain-of-Thought (CoT)</p>
+      <p class="card-body">Solicita raciocínio passo a passo.</p>
+    </div>
+    <div class="card an d6" style="opacity:0" onclick="selectCard(this)">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+      </div>
+      <p class="t-label">Tree of Thoughts (ToT)</p>
+      <p class="card-body">Explora múltiplos caminhos de raciocínio.</p>
+    </div>
+    <div class="card an d7" style="opacity:0" onclick="selectCard(this)">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      </div>
+      <p class="t-label">Self-Consistency</p>
+      <p class="card-body">Gera várias respostas e escolhe a mais consistente.</p>
+    </div>
+    <div class="card hi an d7" style="opacity:0" onclick="selectCard(this)">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </div>
+      <p class="t-label">RAG</p>
+      <p class="card-body">Combina busca em bases de dados com geração de texto.</p>
+    </div>
+  </div>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 08 — SECTION BREAK: OS 10 MANDAMENTOS -->
+<section class="slide center section-cover" id="s7">
+  <div class="ghost-num">04</div>
+  <div class="section-icon-wrap an d1" style="opacity:0">
+    <svg class="section-icon-glyph" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+    <div class="orbit-ring"></div>
+  </div>
+  <span class="rule an d2" style="opacity:0"></span>
+  <p class="section-tag an d3" style="opacity:0">Bloco 04</p>
+  <h2 class="t-cover plx an d4" style="opacity:0; font-weight:700; text-align:center; max-width:720px;" data-depth="1.2">
+    Os 10 Mandamentos
+  </h2>
+</section>
+
+<!-- SLIDE 09 — OS 10 MANDAMENTOS (LISTA) -->
+<section class="slide" id="s8">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Mandamentos · Bloco 04</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">Os 10 Mandamentos</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <div class="col2 an d5" style="opacity:0">
+    <div>
+      <ul class="arrow-list">
+        <li><strong>01.</strong> Seja Claro e Específico</li>
+        <li><strong>02.</strong> Forneça Contexto Suficiente</li>
+        <li><strong>03.</strong> Use Formatação e Estrutura</li>
+        <li><strong>04.</strong> Dê Exemplos e Demonstrações</li>
+        <li><strong>05.</strong> Especifique o Formato e Extensão da Saída</li>
+      </ul>
+    </div>
+    <div>
+      <ul class="arrow-list">
+        <li><strong>06.</strong> Use Técnicas de Elaboração de Perguntas</li>
+        <li><strong>07.</strong> Itere e Refine Seus Prompts</li>
+        <li><strong>08.</strong> Aprenda com Exemplos e Modelos</li>
+        <li><strong>09.</strong> Saiba Quando Pedir Ajuda</li>
+        <li><strong>10.</strong> Pratique, Pratique, Pratique!</li>
+      </ul>
+    </div>
+  </div>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 10 — MANDAMENTO 1: SEJA CLARO E ESPECIFICO -->
+<section class="slide" id="s9">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Mandamento 01 · Bloco 04</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">Seja Claro e Específico</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <p class="t-body an d4" style="opacity:0; max-width:820px; margin-bottom:24px;">
+    Uma IA é como um gênio com amnésia. Ela só saberá o que você disser explicitamente. <span class="hl">Ambiguidade é o inimigo.</span>
+  </p>
+  <div class="vs an d5" style="opacity:0; max-width:1000px;">
+    <div class="vs-bad">
+      <p class="vs-label">Vago</p>
+      <p class="t-body">"Escreva sobre IA"</p>
+    </div>
+    <div class="vs-good">
+      <p class="vs-label">Preciso</p>
+      <p class="t-body">"Escreva um parágrafo introdutório de 100 palavras para um post de blog voltado a iniciantes sobre o que é Inteligência Artificial e por que é importante para pequenas empresas."</p>
+    </div>
+  </div>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 11 — MANDAMENTO 2: CONTEXTO SUFICIENTE -->
+<section class="slide" id="s10">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Mandamento 02 · Bloco 04</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">Forneça Contexto Suficiente</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <p class="t-body an d4" style="opacity:0; max-width:820px; margin-bottom:20px;">
+    Pense na IA como um especialista que está entrando no projeto no meio. Sem contextualização adequada, até os mais brilhantes ficam perdidos.
+  </p>
+  <p class="t-label an d5" style="opacity:0; margin-top:8px;">Perguntas essenciais</p>
+  <ul class="arrow-list" style="max-width:860px;">
+    <li class="an d5" style="opacity:0">Qual é o propósito do texto?</li>
+    <li class="an d6" style="opacity:0">Quem é o público-alvo?</li>
+    <li class="an d7" style="opacity:0">Que conhecimento prévio considerar?</li>
+    <li class="an d8" style="opacity:0">Qual o tom e estilo desejados?</li>
+  </ul>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 12 — MANDAMENTOS 3, 4 E 5 -->
+<section class="slide" id="s11">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Mandamentos 03, 04 e 05 · Bloco 04</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">Estrutura, Exemplos e Formato</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <div class="grid g3" style="width:100%; max-width:1100px;">
+    <div class="card an d5" style="opacity:0">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </div>
+      <p class="t-label">03. Use Formatação</p>
+      <p class="card-body">Um prompt bem organizado molda a saída para o formato desejado. Use títulos, listas numeradas, marcadores e tabelas.</p>
+    </div>
+    <div class="card an d6" style="opacity:0">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <p class="t-label">04. Dê Exemplos</p>
+      <p class="card-body">Exemplos são a ferramenta mais eficaz. Qualidade supera quantidade.</p>
+    </div>
+    <div class="card hi an d7" style="opacity:0">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </div>
+      <p class="t-label">05. Especifique Formato</p>
+      <p class="card-body">Seja preciso sobre forma e tamanho da resposta. IAs são versáteis, mas essa flexibilidade pode ser problemática sem direcionamento.</p>
+    </div>
+  </div>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 13 — MANDAMENTOS 6 E 7 -->
+<section class="slide" id="s12">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Mandamentos 06 e 07 · Bloco 04</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">Perguntas Estratégicas e Iteração</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <div class="col2 an d5" style="opacity:0">
+    <div>
+      <p class="t-label">06. Técnicas de Elaboração</p>
+      <p class="t-body" style="margin-top:12px;">Perguntas estratégicas desbloqueiam insights que instruções diretas não alcançariam. Use perguntas abertas, fechadas, hipotéticas e reflexivas.</p>
+    </div>
+    <div>
+      <p class="t-label">07. Itere e Refine</p>
+      <p class="t-body" style="margin-top:12px;">A engenharia de prompts é um processo iterativo.</p>
+      <div class="callout" style="margin-top:16px;">
+        <p>Ciclo: <strong>Rascunho</strong> → <strong>Teste</strong> → <strong>Analise</strong> → <strong>Revise</strong> → <strong>Repita</strong></p>
+      </div>
+    </div>
+  </div>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 14 — MANDAMENTOS 8, 9 E 10 -->
+<section class="slide" id="s13">
+  <span class="rule an d1" style="opacity:0"></span>
+  <p class="section-tag an d2" style="opacity:0">Mandamentos 08, 09 e 10 · Bloco 04</p>
+  <h2 class="t-title plx an d3" style="opacity:0" data-depth="0.7">Exemplos, Ajuda e Prática</h2>
+  <div class="div-h an d4" style="opacity:0"></div>
+  <div class="grid g3" style="width:100%; max-width:1100px;">
+    <div class="card an d5" style="opacity:0">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      </div>
+      <p class="t-label">08. Aprenda com Exemplos</p>
+      <p class="card-body">Estude prompts eficazes de especialistas. Observe padrões que se repetem.</p>
+    </div>
+    <div class="card an d6" style="opacity:0">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      </div>
+      <p class="t-label">09. Saiba Pedir Ajuda</p>
+      <p class="card-body">Reconheça quando buscar orientação. Compartilhe seu prompt atual e exemplos de saída ao pedir ajuda.</p>
+    </div>
+    <div class="card hi an d7" style="opacity:0">
+      <div class="card-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <p class="t-label">10. Pratique Diariamente</p>
+      <p class="card-body">Não há atalhos secretos. O caminho para maestria é pavimentado com prática diligente.</p>
+    </div>
+  </div>
+  <div class="seal"><svg width="30" height="30" viewBox="0 0 52 52" fill="none"><path d="M26 5C14.4 5 5 14.4 5 26C5 37.6 14.4 47 26 47C37.6 47 47 37.6 47 26C47 17 40.5 9.5 32 6.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M22 46C23.8 49.5 28.2 49.5 30 46" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+</section>
+
+<!-- SLIDE 15 — FECHAMENTO -->
+<section class="slide center" id="s14">
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <img src="/Users/matheussantiago/.claude/skills/orbi-brand/assets/logo-silver.png"
+         alt="Orbi" width="64" class="an d1" style="opacity:0; margin-bottom:40px; filter:brightness(.7);" />
+    <h2 class="t-cover t-glitch plx an d2" style="opacity:0; text-align:center; font-weight:700; max-width:820px; line-height:.97;" data-depth="1">
+      Engenharia de prompts é uma arte e uma ciência.
+    </h2>
+    <div style="width:36px;height:1px;background:var(--smoke);margin:28px auto;" class="an d3" style="opacity:0"></div>
+    <p style="font-size:clamp(15px,1.6vw,20px); font-weight:300; color:var(--silver); text-align:center; max-width:720px; line-height:1.6;" class="an d4" style="opacity:0">
+      Dominar a criação de prompts eficazes é a chave para desbloquear todo o potencial dos modelos de linguagem e alcançar resultados extraordinários.
+    </p>
+    <p style="font-size:11px; font-weight:600; letter-spacing:.25em; text-transform:uppercase; color:var(--steel); text-align:center; margin-top:48px;" class="an d5" style="opacity:0">
+      Orbi Company · 2026
+    </p>
+  </div>
+</section>
+
+</div><!-- /deck -->
+
+<script>
+// ── WAVE BG CROSSFADE ───────────────────────────────────────
+(function() {
+  const base = '/Users/matheussantiago/.claude/skills/post-renderer/assets/backgrounds/';
+  const files = ['wave-01.png','wave-02.png','wave-03.png','wave-04.png','wave-05.png','wave-6.png','wave-7.png','wave-8.png','wave-9.png','wave-10.png','wave-11.png','wave-12.png','wave-13.png','wave-14.png','wave-15.png','wave-16.png','wave-17.png','wave-18.png','wave-19.png','wave-20.png','wave-21.png'];
+  const container = document.getElementById('wave-bg');
+  const imgs = files.map((f, i) => {
+    const img = document.createElement('img');
+    img.src = base + f;
+    if (i === 0) img.classList.add('visible');
+    container.appendChild(img);
+    return img;
+  });
+  let wc = 0;
+  setInterval(() => {
+    imgs[wc].classList.remove('visible');
+    wc = (wc + 1) % imgs.length;
+    imgs[wc].classList.add('visible');
+  }, 4000);
+})();
+
+// ── NEURAL NODES + SYNAPTIC PULSES ──────────────────────────
+(function() {
+  const c = document.getElementById('neural');
+  const ctx = c.getContext('2d');
+  let W, H;
+  function resize() { W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  const N = 160;
+  const nodes = Array.from({length: N}, () => ({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    vx: (Math.random() - .5) * .25,
+    vy: (Math.random() - .5) * .25,
+    r: Math.random() * 2.2 + .6,
+  }));
+
+  const pulses = [];
+  const MAX_PULSES = 18;
+
+  function spawnPulse(fromIdx) {
+    if (pulses.length >= MAX_PULSES) return;
+    const origin = fromIdx !== undefined ? fromIdx : Math.floor(Math.random() * N);
+    const a = nodes[origin];
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const j = Math.floor(Math.random() * N);
+      if (j === origin) continue;
+      const b = nodes[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      if (Math.sqrt(dx*dx + dy*dy) < 160) {
+        pulses.push({ i: origin, j, t: 0, speed: 0.005 + Math.random() * 0.009 });
+        return;
+      }
+    }
+  }
+
+  setTimeout(() => { for (let k = 0; k < 6; k++) spawnPulse(); }, 600);
+  setInterval(() => { if (pulses.length < 8) spawnPulse(); }, 350);
+
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+
+    for (let i = 0; i < N; i++) {
+      const a = nodes[i];
+      a.x += a.vx; a.y += a.vy;
+      if (a.x < 0 || a.x > W) a.vx *= -1;
+      if (a.y < 0 || a.y > H) a.vy *= -1;
+      for (let j = i + 1; j < N; j++) {
+        const b = nodes[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 160) {
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = `rgba(255,255,255,${(1 - d/160) * .14})`;
+          ctx.lineWidth = .5; ctx.stroke();
+        }
+      }
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,.28)';
+      ctx.fill();
+    }
+
+    for (let k = pulses.length - 1; k >= 0; k--) {
+      const p = pulses[k];
+      const a = nodes[p.i], b = nodes[p.j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d >= 160) { pulses.splice(k, 1); continue; }
+
+      p.t += p.speed;
+
+      if (p.t >= 1) {
+        pulses.splice(k, 1);
+        const bursts = Math.random() < 0.55 ? 1 : (Math.random() < 0.25 ? 2 : 0);
+        for (let b2 = 0; b2 < bursts; b2++) spawnPulse(p.j);
+        continue;
+      }
+
+      const px = a.x + dx * p.t;
+      const py = a.y + dy * p.t;
+
+      const trailT = Math.max(0, p.t - 0.14);
+      const tx0 = a.x + dx * trailT, ty0 = a.y + dy * trailT;
+      const trail = ctx.createLinearGradient(tx0, ty0, px, py);
+      trail.addColorStop(0, 'rgba(255,255,255,0)');
+      trail.addColorStop(1, 'rgba(255,255,255,0.65)');
+      ctx.beginPath(); ctx.moveTo(tx0, ty0); ctx.lineTo(px, py);
+      ctx.strokeStyle = trail; ctx.lineWidth = 1.4; ctx.stroke();
+
+      const glow = ctx.createRadialGradient(px, py, 0, px, py, 6);
+      glow.addColorStop(0,    'rgba(255,255,255,0.92)');
+      glow.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+      glow.addColorStop(1,    'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = glow; ctx.fill();
+    }
+
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+// ── SPOTLIGHT + CURSOR + PARALLAX ───────────────────────────
+const spotlight = document.getElementById('spotlight');
+const cursor = document.getElementById('cursor');
+const cursorRing = document.getElementById('cursor-ring');
+let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  spotlight.style.background = `radial-gradient(circle 420px at ${mx}px ${my}px, rgba(255,255,255,.05) 0%, transparent 70%)`;
+  cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
+  cursorRing.style.left = mx + 'px'; cursorRing.style.top = my + 'px';
+  const px = (e.clientX / window.innerWidth - 0.5);
+  const py = (e.clientY / window.innerHeight - 0.5);
+  document.querySelectorAll('.slide.active .plx').forEach(el => {
+    const depth = parseFloat(el.dataset.depth || '1');
+    el.style.transform = `translate(${px * -9 * depth}px, ${py * -5 * depth}px)`;
+  });
+});
+document.addEventListener('mousedown', () => { cursorRing.style.width = '48px'; cursorRing.style.height = '48px'; cursorRing.style.opacity = '.4'; });
+document.addEventListener('mouseup',   () => { cursorRing.style.width = '36px'; cursorRing.style.height = '36px'; cursorRing.style.opacity = '1'; });
+
+// ── PULSE ────────────────────────────────────────────────────
+const pulseEl = document.getElementById('pulse');
+function firePulse() {
+  pulseEl.classList.remove('fire');
+  void pulseEl.offsetWidth;
+  pulseEl.classList.add('fire');
+}
+
+// ── COUNTER ANIMATION ────────────────────────────────────────
+function fmtBR(n, fmt) {
+  if (fmt === 'currency') return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
+  if (fmt === 'decimal2') return n.toFixed(2).replace('.', ',');
+  if (fmt === 'decimal1') return n.toFixed(1).replace('.', ',');
+  return Math.round(n).toLocaleString('pt-BR');
+}
+function startCounter(el) {
+  const target = parseFloat(el.dataset.count);
+  const fmt = el.dataset.fmt || 'int';
+  const dur = 1000, t0 = performance.now();
+  function tick(now) {
+    const t = Math.min((now - t0) / dur, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = fmtBR(target * ease, fmt);
+    if (t < 1) requestAnimationFrame(tick);
+    else el.textContent = fmtBR(target, fmt);
+  }
+  requestAnimationFrame(tick);
+}
+
+// ── FLOW INTERACTIVITY ─────────────────────────────────────
+function selectFlow(el) {
+  const parent = el.closest('.flow');
+  if (!parent) return;
+  parent.querySelectorAll('.flow-step').forEach(s => s.classList.remove('flow-active'));
+  el.classList.add('flow-active');
+}
+
+// ── CARD INTERACTIVITY ─────────────────────────────────────
+function selectCard(el) {
+  const parent = el.closest('.grid');
+  if (!parent) return;
+  const isActive = el.classList.contains('card-active');
+  parent.querySelectorAll('.card').forEach(c => c.classList.remove('card-active'));
+  if (!isActive) el.classList.add('card-active');
+}
+
+// ── DECK ENGINE ─────────────────────────────────────────────
+const slides = document.querySelectorAll('.slide');
+let cur = 0;
+const total = slides.length;
+
+const dotsWrap = document.getElementById('nav-dots');
+slides.forEach((_, i) => {
+  const dot = document.createElement('div');
+  dot.className = 'nav-dot';
+  dot.addEventListener('click', e => {
+    e.stopPropagation();
+    if (i !== cur) {
+      const dir = i > cur ? 'right' : 'left';
+      firePulse();
+      resetSlide(slides[i]);
+      cur = i;
+      render(dir);
+    }
+  });
+  dotsWrap.appendChild(dot);
+});
+
+function resetSlide(s) {
+  s.querySelectorAll('.bc-fill').forEach(f => { f.style.transition = 'none'; f.style.width = '0%'; });
+  s.querySelectorAll('.bc-delta').forEach(d => { d.style.transition = 'none'; d.style.opacity = '0'; });
+}
+
+function triggerSlide(s) {
+  setTimeout(() => {
+    s.querySelectorAll('.bc-fill[data-pct]').forEach((el, j) => {
+      setTimeout(() => {
+        el.style.transition = 'width .85s cubic-bezier(.2,.8,.2,1)';
+        el.style.width = el.dataset.pct + '%';
+      }, j * 60);
+    });
+  }, 280);
+  setTimeout(() => {
+    s.querySelectorAll('.bc-delta').forEach(el => {
+      el.style.transition = 'opacity .4s ease';
+      el.style.opacity = '1';
+    });
+  }, 1250);
+  setTimeout(() => {
+    s.querySelectorAll('[data-count]').forEach(el => startCounter(el));
+  }, 380);
+}
+
+function render(dir) {
+  slides.forEach((s, i) => {
+    s.classList.toggle('active', i === cur);
+    s.classList.remove('anim-right', 'anim-left');
+  });
+  if (dir) {
+    void slides[cur].offsetWidth;
+    slides[cur].classList.add('anim-' + dir);
+  }
+  document.getElementById('progress').style.width = (cur / (total - 1) * 100) + '%';
+  document.querySelectorAll('.nav-dot').forEach((d, i) => d.classList.toggle('dot-active', i === cur));
+  triggerSlide(slides[cur]);
+  document.querySelectorAll('.plx').forEach(el => { el.style.transform = ''; });
+}
+
+function go(d) {
+  const n = cur + d;
+  if (n >= 0 && n < total) {
+    firePulse();
+    resetSlide(slides[n]);
+    const dir = d > 0 ? 'right' : 'left';
+    setTimeout(() => { cur = n; render(dir); }, 80);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if ([' ', 'ArrowRight', 'ArrowDown', 'PageDown'].includes(e.key)) { e.preventDefault(); go(1); }
+  if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); go(-1); }
+  if (e.key === 'Home') { cur = 0; render(); }
+  if (e.key === 'End') { cur = total - 1; render(); }
+});
+
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const d = e.changedTouches[0].clientX - tx;
+  if (Math.abs(d) > 50) go(d < 0 ? 1 : -1);
+});
+
+document.getElementById('deck').addEventListener('click', e => {
+  if (e.target.closest('.nbtn') || e.target.closest('#nav-dots')) return;
+  if (e.target.closest('.flow-step') || e.target.closest('.card[onclick]')) return;
+  go(e.clientX > window.innerWidth / 2 ? 1 : -1);
+});
+
+render();
+</script>
+</body>
+</html>
